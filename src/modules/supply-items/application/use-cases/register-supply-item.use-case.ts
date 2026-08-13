@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { EntityAlreadyExistsError } from '../../../../shared/kernel/domain-errors';
 import { SupplyCategory, SupplyItem } from '../../domain/entities/supply-item.entity';
 import { SUPPLY_ITEM_REPOSITORY } from '../../domain/ports/supply-item-repository.port';
 import type { SupplyItemRepositoryPort } from '../../domain/ports/supply-item-repository.port';
@@ -17,7 +18,12 @@ export class RegisterSupplyItemUseCase {
     private readonly supplyItemRepository: SupplyItemRepositoryPort,
   ) {}
 
-  execute(input: RegisterSupplyItemInput): Promise<SupplyItem> {
+  async execute(input: RegisterSupplyItemInput): Promise<SupplyItem> {
+    const existing = await this.supplyItemRepository.findByName(input.name);
+    if (existing) {
+      throw new EntityAlreadyExistsError('Ya existe un artículo con este nombre en el catálogo');
+    }
+
     const supplyItem = SupplyItem.create({
       id: randomUUID(),
       name: input.name,

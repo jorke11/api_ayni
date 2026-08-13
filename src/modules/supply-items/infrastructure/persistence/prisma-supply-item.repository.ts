@@ -18,6 +18,13 @@ export class PrismaSupplyItemRepository implements SupplyItemRepositoryPort {
     return records.map((record) => this.toDomain(record));
   }
 
+  async findByName(name: string): Promise<SupplyItem | null> {
+    const record = await this.prisma.supplyItem.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    return record ? this.toDomain(record) : null;
+  }
+
   async save(supplyItem: SupplyItem): Promise<SupplyItem> {
     const snapshot = supplyItem.toSnapshot();
     const record = await this.prisma.supplyItem.upsert({
