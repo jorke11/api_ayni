@@ -1,0 +1,68 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+  SERVER_PATH: "/home/webapp/projects/ayni/api_ayni"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx prisma generate
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            node_modules/
+            package.json
+            package-lock.json
+            prisma/
+            ecosystem.config.js
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519
+          printf "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+
+      - name: Asegurar carpeta remota
+        run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ env.SERVER_PATH }}"
+
+      - name: Sincronizar archivos
+        run: |
+          rsync -atv --delete \
+            --exclude '.env.production' --exclude '.env' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.SERVER_PATH }}/
+
+      - name: Reiniciar app con PM2
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            cd ${{ env.SERVER_PATH }} &&
+            pm2 startOrRestart ecosystem.config.js --env production
+          "

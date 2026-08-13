@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StaffRole {
+  ADMIN
+  OPERATOR
+}
+
+enum VulnerabilityReason {
+  ELDERLY
+  PREGNANT
+  DISABILITY
+  MINOR
+  CHRONIC_ILLNESS
+  OTHER
+}
+
+enum SupplyCategory {
+  MEDICINE
+  FOOD
+  CLOTHING
+  HYGIENE
+  OTHER
+}
+
+model StaffUser {
+  id        String    @id @default(uuid())
+  cedula    String    @unique
+  fullName  String
+  pinHash   String
+  role      StaffRole @default(OPERATOR)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  deliveries Delivery[]
+
+  @@map("staff_users")
+}
+
+model Person {
+  id                   String                @id @default(uuid())
+  cedula               String                @unique
+  fullName             String
+  birthDate            DateTime?
+  gender               String?
+  phone                String?
+  address              String?
+  householdSize        Int?
+  isVulnerable         Boolean               @default(false)
+  vulnerabilityReasons VulnerabilityReason[]
+  diseases             String[]
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  deliveries Delivery[]
+
+  @@map("persons")
+}
+
+model SupplyItem {
+  id       String         @id @default(uuid())
+  name     String
+  category SupplyCategory
+  unit     String
+
+  deliveryItems DeliveryItem[]
+
+  @@map("supply_items")
+}
+
+model Delivery {
+  id          String   @id @default(uuid())
+  personId    String
+  staffUserId String
+  deliveredAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  person    Person         @relation(fields: [personId], references: [id])
+  staffUser StaffUser      @relation(fields: [staffUserId], references: [id])
+  items     DeliveryItem[]
+
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id           String @id @default(uuid())
+  deliveryId   String
+  supplyItemId String
+  quantity     Int
+
+  delivery   Delivery   @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  supplyItem SupplyItem @relation(fields: [supplyItemId], references: [id])
+
+  @@map("delivery_items")
+}
