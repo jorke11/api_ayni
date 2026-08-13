@@ -82,7 +82,7 @@ jobs:
         run: |
           ssh "$SSH_USER_CLEAN@$SSH_HOST_CLEAN" "
             cd ${{ env.SERVER_PATH }} &&
-            ./node_modules/.bin/prisma generate
+            node node_modules/prisma/build/index.js generate
           "
 
       - name: Reiniciar app con PM2
