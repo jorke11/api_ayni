@@ -42,6 +42,15 @@ jobs:
         with:
           name: build-output
 
+      - name: Normalizar variables del servidor
+        run: |
+          HOST=$(printf '%s' "${{ secrets.SSH_HOST }}" | tr -d '[:space:]')
+          USER=$(printf '%s' "${{ secrets.SSH_USER }}" | tr -d '[:space:]')
+          echo "SSH_HOST_CLEAN longitud: ${#HOST}"
+          echo "SSH_USER_CLEAN longitud: ${#USER}"
+          echo "SSH_HOST_CLEAN=$HOST" >> "$GITHUB_ENV"
+          echo "SSH_USER_CLEAN=$USER" >> "$GITHUB_ENV"
+
       - name: Configurar SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -50,20 +59,20 @@ jobs:
       - name: Confiar en el host remoto
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST_CLEAN" >> ~/.ssh/known_hosts
 
       - name: Asegurar carpeta remota
-        run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ env.SERVER_PATH }}"
+        run: ssh "$SSH_USER_CLEAN@$SSH_HOST_CLEAN" "mkdir -p ${{ env.SERVER_PATH }}"
 
       - name: Sincronizar archivos
         run: |
           rsync -atv --delete \
             --exclude '.env.production' --exclude '.env' \
-            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ env.SERVER_PATH }}/
+            ./ "$SSH_USER_CLEAN@$SSH_HOST_CLEAN:${{ env.SERVER_PATH }}/"
 
       - name: Reiniciar app con PM2
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+          ssh "$SSH_USER_CLEAN@$SSH_HOST_CLEAN" "
             cd ${{ env.SERVER_PATH }} &&
             pm2 startOrRestart ecosystem.config.js --env production
           "
