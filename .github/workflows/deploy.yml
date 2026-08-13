@@ -78,6 +78,13 @@ jobs:
             --exclude '.env.production' --exclude '.env' \
             ./ "$SSH_USER_CLEAN@$SSH_HOST_CLEAN:${{ env.SERVER_PATH }}/"
 
+      - name: Generar Prisma Client en el servidor
+        run: |
+          ssh "$SSH_USER_CLEAN@$SSH_HOST_CLEAN" "
+            cd ${{ env.SERVER_PATH }} &&
+            npx prisma generate
+          "
+
       - name: Reiniciar app con PM2
         run: |
           ssh "$SSH_USER_CLEAN@$SSH_HOST_CLEAN" "
