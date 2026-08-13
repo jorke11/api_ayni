@@ -59,6 +59,14 @@ jobs:
       - name: Confiar en el host remoto
         run: |
           mkdir -p ~/.ssh
+          # El servidor corre Dropbear (SSH legacy): solo ofrece host key tipo
+          # ssh-rsa, deprecado por defecto en OpenSSH moderno. Lo habilitamos
+          # explícitamente para este host.
+          cat >> ~/.ssh/config <<EOF
+          Host $SSH_HOST_CLEAN
+            HostKeyAlgorithms +ssh-rsa
+            PubkeyAcceptedAlgorithms +ssh-rsa
+          EOF
           ssh-keyscan -H "$SSH_HOST_CLEAN" >> ~/.ssh/known_hosts
 
       - name: Asegurar carpeta remota
